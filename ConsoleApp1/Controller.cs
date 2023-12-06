@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,6 +10,14 @@ namespace ConsoleApp1
 {
     class Controller
     {
+
+        private static Controller? instance;
+        public static Controller GetInstance()
+        {
+            instance ??= new Controller();
+            return instance;
+        }
+
         public string Path { get; set; }
 
         public bool SetAndCheckPath(string path) // Проверка пути и расширения
@@ -18,7 +27,7 @@ namespace ConsoleApp1
                 Path = path;
                 return true;
             }
-            else return false;
+            return false;
         }
 
         public string GetString(List<string> records, int position) // Вывод записи на экран
@@ -31,10 +40,15 @@ namespace ConsoleApp1
 
         public List<string> GetAllRecords() // вывод всех записей на экран
         {
-            var data = LoadAll(Path);
+            List<Cinema> allCinema = new();
+            string[] lines = File.ReadAllLines(Path);
+            foreach (string line in lines)
+            {
+                allCinema.Add(ConvertTextToCinema(line));
+            }
             var outputRecords = new List<string>();
             int num = 1;
-            foreach (var cinema in data)
+            foreach (var cinema in allCinema)
             {
                 outputRecords.Add(GetString(cinema.GetStringList(), num));
                 num++;
@@ -44,7 +58,8 @@ namespace ConsoleApp1
 
         public List<string> GetSepRecord(int number)
         {
-            var data = SeparatelyLoad(Path, number - 1);
+            string[] lines = File.ReadAllLines(Path);
+            var data = ConvertTextToCinema(lines[number-1]);
             List<string> outputRecord = new();
             outputRecord.Add(GetString(data.GetStringList(), number));
             return outputRecord;
@@ -52,62 +67,33 @@ namespace ConsoleApp1
 
         public void DeleteRecord(int number)
         {
-            CinemaDelete(Path, number);
+            File.WriteAllLines(Path,
+                File.ReadLines(Path).
+                Where((line, index) => index != number - 1).ToList());
         }
 
         public void AddRecord(string str)
         {
-            var record = ConvertTextToCinema(str);
-            CinemaAdd(Path, record);
+            //var record = ConvertTextToCinema(str);
+            File.AppendAllText(Path, str);//ConvertCinemaToText(record));
         }
 
         #region Обработка данных 
 
         string delim = ";";
-
-       
-        private string ConvertCinemaToText(Cinema cinema)
-        {
-            string str = cinema.Name + delim + cinema.Address + delim
-                + cinema.Halls.ToString() + delim + cinema.Capacity.ToString()
-                + delim + cinema.Has3D.ToString();
-            return str;
-        }
+        //private string ConvertCinemaToText(Cinema cinema)
+        //{
+        //    string str = cinema.Name + delim + cinema.Address + delim
+        //        + cinema.Halls.ToString() + delim + cinema.Capacity.ToString()
+        //        + delim + cinema.Has3D.ToString();
+        //    return str;
+        //}
  
         private Cinema ConvertTextToCinema(string txtLine)
         {
             string[] line = txtLine.Split(delim);
             return new Cinema(
                 line[0], line[1], int.Parse(line[2]), int.Parse(line[3]), bool.Parse(line[4]));
-        }
-
-
-        private List<Cinema> LoadAll(string path)
-        {
-            List<Cinema> allCinema = new();
-            string[] lines = File.ReadAllLines(path);
-            foreach (string line in lines)
-            {
-                allCinema.Add(ConvertTextToCinema(line));
-            }
-            return allCinema;
-        }
-
-        private Cinema SeparatelyLoad(string path, int number)
-        {
-            string[] lines = File.ReadAllLines(path);
-            return ConvertTextToCinema(lines[number]);
-        }
-
-        private void CinemaDelete(string path, int recordNumber)
-        {
-            File.WriteAllLines(path,
-                File.ReadLines(path).Where((line, index) => index != recordNumber - 1).ToList());
-        }
-
-        private void CinemaAdd(string path, Cinema cinema)
-        {
-            File.AppendAllText(path, ConvertCinemaToText(cinema));
         }
         #endregion
     }

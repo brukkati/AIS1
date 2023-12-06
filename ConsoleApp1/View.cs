@@ -1,128 +1,128 @@
-﻿namespace ConsoleApp1
+﻿using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading.Tasks;
+using ConsoleApp1;
+using NLog;
+using ServerClientLinkingPart;
+
+namespace lab1
 {
     class View
     {
-        static void MainMenu()
-        {
-            Console.WriteLine("\nВыберите действие с файлом\n" +
-                "1. Выбрать файл для чтения и записи\n" +
-                "2. Вывод всех записей\n" +
-                "3. Вывод записи по номеру\n" +
-                "4. Удаление записи из файла\n" +
-                "5. Добавление записи в файл\n" +
-                "ESC. Выйти из программы\n");
-        }
-        //1
-        static void SetPath(Controller controller)
-        {
-            Console.WriteLine("Введите путь к файлу:\n");
-            string path = Console.ReadLine();
-            if (!controller.SetAndCheckPath(path))
-            {
-                Console.WriteLine("Введите корректный путь к файлу!");
-                SetPath(controller);
-            }
-        }
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        //static void SetPath(Controller controller)
+        //{
+        //    Console.WriteLine("Введите путь к файлу:\n");
+        //    string path = Console.ReadLine();
+        //    if (!controller.SetAndCheckPath(path))
+        //    {
+        //        Console.WriteLine("Введите корректный путь к файлу!");
+        //        SetPath(controller);
+        //    }
+        //}
 
-        static void doActionMainMenu(Controller controller)
+        static void doClientRequest(ref Connection con)
         {
-            switch (Console.ReadKey(true).Key)
+            switch (con.Act)
             {
-                case ConsoleKey.D1:
-                    SetPath(controller);
+                case "SetAndCheckPath":
+                    string isSuccess = Controller.GetInstance().SetAndCheckPath(con.Content[0]).ToString();
+                    con.Content = new List<string> { isSuccess };
                     break;
-                case ConsoleKey.D2:
-                    
-                    controller.GetAllRecords().ForEach(Console.WriteLine);
+                case "AddRecord":
+                    Controller.GetInstance().AddRecord(con.Content[0]);
+                    logger.Info("Client succesfully added the record");
                     break;
-                case ConsoleKey.D3:
-                    Console.WriteLine("Введите номер искомой записи: ");
+                case "DeleteRecord":
                     try
                     {
-                        int a = int.Parse(Console.ReadLine());
-                        controller.GetSepRecord(a).ForEach(Console.WriteLine);
+                        Controller.GetInstance().DeleteRecord(int.Parse(con.Content[0]));
+                        con.Content = new List<string> { "True" };
+                        logger.Info("Client succesfully deleted the record");
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        Console.WriteLine("Запись под этим номером не найдена или введена неверно!");
+                        logger.Error(ex.Message);
+                        con.Content = new List<string> { "False" };
                     }
                     break;
-                case ConsoleKey.D4:
-                    Console.WriteLine("Введите номер записи, которую нужно удалить: ");
+                case "GetAllRecords":
+                    List<string> list = Controller.GetInstance().GetAllRecords();
+                    con.Content = list;
+                    logger.Info("Client received all records");
+                    break;
+                case "GetSepRecord":
                     try
                     {
-                        int a = int.Parse(Console.ReadLine());
-                        controller.DeleteRecord(a);
+                        List<string> line = Controller.GetInstance().GetSepRecord(int.Parse(con.Content[0]));
+                        con.Content = line;
+                        logger.Info("Client received separate record");
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        Console.WriteLine("Запись под этим номером не найдена или введена неверно!");
+                        logger.Error(ex.Message);
+                        con.Content = new List<string> { "Строка не найдена!\n" };
                     }
                     break;
-                case ConsoleKey.D5:
-                    string str = "\n";
-                        Console.WriteLine("Введите название кинотеатра:\n");
-                        str += Console.ReadLine() + ";";
-
-                        Console.WriteLine("Введите адрес кинотеатра:\n");
-                        str += Console.ReadLine() + ";";
-
-                        Console.WriteLine("Введите количество залов кинотеатра (число):\n");
-                        string b = Console.ReadLine();
-                        try
-                        {
-                            int.Parse(b); 
-                            str += b + ";";
-                        }
-                        catch
-                        {
-                            Console.WriteLine("Неверно введены данные. Введите число");
-                        break;
-                        }
-
-                        Console.WriteLine("Введите вместимость кинотеатра (число):\n");
-                        b = Console.ReadLine();
-                        try
-                        {
-                            int.Parse(b);
-                            str += b + ";";
-                        }
-                        catch
-                        {
-                            Console.WriteLine("Неверно введены данные. Введите число");
-                        break;
-                        }
-                        
-                        Console.WriteLine("Введите, поддерживает ли кинотеатр 3D-показ (True/False):\n");
-                        b = Console.ReadLine();
-                        try
-                        {
-                            bool.Parse(b);
-                        str += b;
-                        }
-                        catch
-                        {
-                            Console.WriteLine("Неверно введены данные. Введите True/False");
-                        break;
-                        }
-                        controller.AddRecord(str);
-                    break;
-                case ConsoleKey.Escape:
-                    Environment.Exit(0);
+                case "Shutdown":
+                    logger.Info("Client disconnected");
                     break;
             }
         }
-
-        static void Main(string[] args)
+        public static async Task AnswerRequestAsync(NetworkStream stream)
         {
-            Controller controller = new();
-            controller.Path = "D:\\учеба 5 семестр\\ais\\ConsoleApp1\\Cinema.csv";
-            do
+            try
             {
-                MainMenu();
-                doActionMainMenu(controller);
+                while (true)
+                {
+                    List<byte> data = new List<byte>();
+                    while (!stream.DataAvailable) ;//
+                    while (stream.DataAvailable)
+                    {
+                        data.Add((byte)stream.ReadByte());
+                    }
+                    string json = Encoding.Unicode.GetString(data.ToArray());
+                    Connection con = Connection.GetRequest(json);
+                    doClientRequest(ref con);
+                    string responseJson = con.GetJson();
+                    await stream.WriteAsync(Encoding.Unicode.GetBytes(responseJson));
+                }
             }
-            while (true);
+            catch (Exception ex)
+            {
+                logger.Info(ex.Message);
+            }
+        }
+
+        static async Task Main(string[] args)
+        {
+            TcpListener server = new TcpListener(System.Net.IPAddress.Parse("127.0.0.1"), 8080);
+            try
+            {
+                server.Start();
+                Console.WriteLine("Server is running");
+                while (true)
+                {
+                    using var tcpClient = await server.AcceptTcpClientAsync();
+                    Console.WriteLine("A connection with the client has been established");
+                    logger.Info("A connection with the client has been established");
+                    NetworkStream stream = tcpClient.GetStream();
+                    await AnswerRequestAsync(stream);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                logger.Info(ex.Message);
+            }
+            finally
+            {
+                server.Stop();
+            }
         }
     }
 }
