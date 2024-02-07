@@ -31,28 +31,28 @@ namespace Arch_Lab5
     public class Response
     {
         public int id { get; set; }
-        public string home_town { get; set; }
+        //public string home_town { get; set; }
         public string status { get; set; }
         public string first_name { get; set; }
         public string last_name { get; set; }
         public string bdate { get; set; }
-        public City city { get; set; }
-        public Country country { get; set; }
+        //public City city { get; set; }
+        //public Country country { get; set; }
         public string phone { get; set; }
         public int sex { get; set; }
     }
 
-    public class City
-    {
-        public int id { get; set; }
-        public string title { get; set; }
-    }
+    //public class City
+    //{
+    //    public int id { get; set; }
+    //    public string title { get; set; }
+    //}
 
-    public class Country
-    {
-        public int id { get; set; }
-        public string title { get; set; }
-    }
+    //public class Country
+    //{
+    //    public int id { get; set; }
+    //    public string title { get; set; }
+    //}
 
     public partial class UserSettingsWindow : Window
     {
@@ -70,6 +70,7 @@ namespace Arch_Lab5
         {
             string reqStrTemplate = "https://api.vk.com/method/{0}?access_token={1}&v=5.154";
             string method = "account.getProfileInfo";
+            
             f = mw.GET(reqStrTemplate, method, mw.Access_token);
             var user = JsonSerializer.Deserialize<Rootobject>(f).response;
             string[] list =
@@ -79,10 +80,10 @@ namespace Arch_Lab5
                 "lastname: " + user.last_name,
                 "firstname: " + user.first_name,
                 "birth date: " + user.bdate,
-                "city: " + user.city.title,
+                //"city: " + user.city.title,
                 "phone number: " + user.phone,
-                "sex: " + user.sex.ToString(),
-                "country: " + user.country.title
+                "sex: " + user.sex.ToString()
+                //"country: " + user.country.title
             };
             UserInformationTextBox.Text = string.Join("\n", list);
         }
@@ -90,7 +91,8 @@ namespace Arch_Lab5
         private void Button_Click_Friends(object sender, RoutedEventArgs e)
         {
             string reqStrTemplate = "https://api.vk.com/method/{0}?access_token={1}&v=5.154&user_id="+mw.UserID;
-            string method = "friends.getOnline";
+            string method = "users.getFollowers";
+            //string method = "account.getAppPermissions";
             f = mw.GET(reqStrTemplate, method, mw.Access_token);
             var ArrayOfFriends = JsonSerializer.Deserialize<myFriends>(f).response;
 

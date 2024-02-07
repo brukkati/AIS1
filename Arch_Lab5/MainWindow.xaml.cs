@@ -24,9 +24,10 @@ namespace Arch_Lab5
         private void Button_Click(object sender, RoutedEventArgs e) //открытие созданного приложения в VK
         {
             {
-                string appId = new ConfigurationBuilder().AddUserSecrets<App>().Build().GetSection("secret").Value;
+                //&scope = offline,friends
+                string appId = "51818065";// new ConfigurationBuilder().AddUserSecrets<App>().Build().GetSection("secret").Value;
                 var uriStr = @"https://oauth.vk.com/authorize?client_id=" + appId + 
-                    @"&scope=offline,friends&redirect_uri=https://oauth.vk.com/blank.html&display=page&v=5.6&response_type=token";
+                    @"&redirect_uri=https://oauth.vk.com/blank.html&display=page&v=5.6&response_type=token";
                 Browser.AddressChanged += BrowserOnNavigated;
                 Browser.Load(uriStr);
             }
